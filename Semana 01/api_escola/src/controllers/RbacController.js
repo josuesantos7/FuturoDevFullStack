@@ -1,143 +1,163 @@
 const Permission = require("../models/Permission")
-const PermissionRole = require("../models/PermissionRole")
 const Role = require("../models/Role")
 const User = require("../models/User")
-const UserRole = require("../models/UserRole")
 
-class RbacController {
-    async listPermissions(req, res){ 
+class RBAC {
+    async listPermissions(request, response) {
         const data = await Permission.findAll()
+        const total = await Permission.count()
 
-        return res.status(200).send(data)
+        return response.status(200).send({ records: data, total })
     }
-    async listRoles(req, res){ 
-        const data = await Role.findAll()
 
-        return res.status(200).send(data)
-    }
-    async createOnePermission(req, res){ 
+    async createOnePermission(request, response) {
         try {
-            const dados = req.body
-
-            if(!dados.description){
-                return res.status(400).send("A descrição é obrigatória")
+            const { description } = request.body
+            if (!description) {
+                return response.status(400).send({ message: "A descrição é um campo obrigatório" })
             }
 
-            const permissionExists = await Permission.findOne({where: {description: dados.description}})
-
-            if(permissionExists){
-                return res.status(400).send("Já existe uma permissão com essa descrição!")
+            const permission = await Permission.findOne({where: {description:description}})
+            if(permission){
+             return response.status(400).send({ message: "Permissão já criada" })
             }
 
-            const novo = await Permission.create(dados)
-            
-            return res.status(201).send(novo)
-        } catch (error){
+            const data = await Permission.create({
+                description
+            })
+
+            return response.status(201).send(data)
+        } catch (error) {
             console.log(error.message)
-            return res.status(500).send("Algo deu errado!")
+            return response.status(400).send({ message: "A permissão não pôde ser criada!" })
         }
     }
-    async createOneRole(req, res){
+
+    async listRoles(request, response) {
         try {
-            const dados = req.body
 
-            if(!dados.description){
-                return res.status(400).send("A descrição é obrigatória")
-            }
-
-            const roleExists = await Role.findOne({where: {description: dados.description}})
-
-            if(roleExists){
-                return res.status(400).send("Já existe uma função com essa descrição!")
-            }
-
-            const novo = await Role.create(dados)
+            const data = await Role.findAll({include: [{model: Permission}]})
+            const total = await Role.count()
             
-            return res.status(201).send(novo)
+            return response.status(200).send({ records: data, total })
         } catch (error){
             console.log(error.message)
-            return res.status(500).send("Algo deu errado!")
+            return response.status(500).send("Algo deu errado!")
         }
     }
-    async listPermissionsByRole(req, res){
+
+    async createOneRole(request, response) {
         try {
-            const {id} = req.params
+            const { description } = request.body
+            if (!description) {
+                return response.status(400).send({ message: "A descrição é um campo obrigatório" })
+            }
+
+            const role = await Role.findOne({where: {description:description}})
+               if(role){
+                return response.status(400).send({ message: "Função já criada" })
+            }
+
+            const data = await Role.create({
+                description
+            })
+
+            return response.status(201).send({ message: "A Função foi criada!", data})
+        } catch (error) {
+            console.log(error.message)
+            return response.status(400).send({ message: "A Função não pôde ser criada!" })
+        }
+    }
+
+    async listPermissionsByRole(request, response){
+        try {
+            const { id } = request.params;
+            const role = await Role.findOne({
+              where: { id: id },
+              include: [{ 
+                model: Permission, 
+                as: 'permissions'
+              }],
+            });
+
+            if (!role){
+                return response.status(404).json({ 
+                    message: 'Função não encontrada' 
+                })
+            }; 
+
+            return response.status(200).json(role);
+        } catch (error) {
+            console.log(error.message)
+            response.status(500).json({ message: 'Algo deu errado' });
+        }
+    }
+
+    async addPermissionToRole(request, response) {
+        try {
+            const { permissionId, roleId } = request.body
+
+            if (!permissionId) {
+                return response.status(400).send({ message: "O id da permissão é um campo obrigatório" })
+            }
+
+            if (!roleId) {
+                return response.status(400).send({ message: "O id da função é um campo obrigatório" })
+            }
 
             const role = await Role.findOne({
-                where: {id: id},
-                include: [{model: Permission}]
+                where: {id: roleId}
+              })
+
+            if (!role) {
+                return response.status(400).send({ message: "A função não existe." })
+            }
+            
+            const permission = await Permission.findOne({
+                where: {id: permissionId}
             })
 
-            if(!role){
-                return res.status(404).send("Função não encontrada!")
+            if (!permission) {
+                return response.status(400).send({ message: "A permissão não existe." })
             }
 
-            return res.status(200).send(role)
-        } catch (error){
+            await role.addPermissions(permission);
+
+            return response.status(201).send({message: "Permissão atribuida a Função com sucesso!"})
+        } catch (error) {
             console.log(error.message)
-            return res.status(500).send("Algo deu errado!")
+            return response.status(400).send({ message: "A Função não pôde ser atribuida!" })
         }
     }
-    async addPermissionToRole(req, res){ 
+
+    async addRoleToUser(request, response) {
         try {
-            const {permissionId, roleId} = req.body
+            const { userId, roleId } = request.body
 
-            if(!permissionId || !roleId){
-                return res.status(400).send("O id da permissão e/ou role é obrigatório!")
+            if (!userId) {
+                return response.status(400).send({ message: "O id do usuário é um campo obrigatório" })
             }
 
-            const roleExists = await Role.findByPk(roleId)
-            const permissionExists = await Permission.findByPk(permissionId)
-
-            if(!roleExists){
-                return res.status(400).send("Role não encontrada!")
+            if (!roleId) {
+                return response.status(400).send({ message: "O id da função é um campo obrigatório" })
             }
 
-            if(!permissionExists){
-                return res.status(400).send("Permissão não encontrada!")
-            }
+            const role = await Role.findOne({
+                where: {id: roleId}
+              })
 
-            const permissionRoleNovo = await PermissionRole.create({
-                permissionId: permissionId,
-                roleId: roleId
+            const user = await User.findOne({
+                where: {id: userId}
             })
 
-            return res.status(201).send(permissionRoleNovo)
-        } catch (error){
+            await user.addRoles(role);
+
+            return response.status(201).send({message: "Função atribuida ao usuário com sucesso!"})
+        } catch (error) {
             console.log(error.message)
-            return res.status(500).send("Algo deu errado!")
-        }
-    }
-    async addRoleToUser(req, res){
-        try {
-            const {userId, roleId} = req.body
-
-            if(!userId || !roleId){
-                return res.status(400).send("O id do usuário e/ou role é obrigatório!")
-            }
-
-            const userExists = await User.findByPk(userId)
-            const roleExists = await Role.findByPk(roleId)
-
-            if(!roleExists){
-                return res.status(400).send("Role não encontrada!")
-            }
-
-            if(!userExists){
-                return res.status(400).send("Usuário não encontrado!")
-            }
-
-            const userRoleNovo = await UserRole.create({
-                roleId: roleId,
-                userId: userId
-            })
-
-            return res.status(201).send(userRoleNovo)
-        } catch (error){
-            console.log(error.message)
-            return res.status(500).send("Algo deu errado!")
+            return response.status(400).send({ message: "A Função não pôde ser atribuida!" })
         }
     }
 }
 
-module.exports = new RbacController()
+module.exports = new RBAC()

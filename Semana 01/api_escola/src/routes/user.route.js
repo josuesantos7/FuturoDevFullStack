@@ -1,12 +1,12 @@
-const {Router} = require('express');
-const userController = require('../controllers/UserController');
+const express = require('express');
+const router = express.Router();
+const userController = require('../controllers/user.controller');
+const { hasPermission } = require('../middleware/hasPermission');
 
-const userRouter = new Router()
+router.get('/', hasPermission(['ler_usuarios']), userController.findAll);
+router.get('/:id', hasPermission(['ler_usuarios']), userController.findById);
+router.post('/', hasPermission(['criar_usuario']), userController.createNewUser);
+router.put('/:id', hasPermission(['editar_usuario']), userController.updateUser);
+router.delete('/:id', hasPermission(['remover_usuario']), userController.deleteUser);
 
-userRouter.get('/', userController.findAll);
-userRouter.get('/:id', userController.findById);
-userRouter.post('/', userController.createNewUser);
-userRouter.put('/:id', userController.updateUser);
-userRouter.delete('/:id', userController.deleteUser);
-
-module.exports = userRouter;
+module.exports = router;

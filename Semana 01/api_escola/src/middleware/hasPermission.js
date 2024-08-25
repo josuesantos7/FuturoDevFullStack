@@ -10,6 +10,10 @@ function hasPermission(permissions){
 
         const token = request.headers.authorization
 
+        if (!token) {
+            return response.status(401).send({ message: "Token não fornecido" });
+        }
+
         const decoded = jwt.verify(token, process.env.SECRET_JWT)
         request.payload = decoded
 
@@ -20,7 +24,7 @@ function hasPermission(permissions){
                     roleId: request.payload.roles.map((role) => role.id)
                 },
                 attributes: ['permissionId'],
-                include: [{model: Permission}]
+                include: [{model: Permission, as: 'permissions'}]
             })
 
             const existPermission = roles.some((role) => {
@@ -32,12 +36,18 @@ function hasPermission(permissions){
             })
 
             if(!existPermission){
-                return response.status(401).send("Você não tem permissão para acesar!")
+                return response.status(401).send("Você não tem permissão para acessar!")
             }
 
             next()
-        } catch {
-
+        } catch (error){
+            console.log(error)
+            return response.status(401).send({
+                message: "Autenticação Falhou",
+                cause: error.message})
         }
     }
 }
+
+
+module.exports = { hasPermission }
