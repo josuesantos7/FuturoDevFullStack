@@ -1,0 +1,10 @@
+.titulo {
+    padding-bottom: 6px;
+}
+
+.formulario {
+    display: flex;
+    flex-direction: column;
+    width: 250px;
+    gap: 5px;
+}
