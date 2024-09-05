@@ -1,0 +1,17 @@
+/* Estilos para o tema claro */
+body.claro {
+    background-color: white;
+    color: black;
+}
+
+/* Estilos para o tema escuro */
+body.escuro {
+    background-color: black;
+    color: white;
+}
+
+button {
+    padding: 10px 20px;
+    margin-top: 20px;
+    cursor: pointer;
+}
