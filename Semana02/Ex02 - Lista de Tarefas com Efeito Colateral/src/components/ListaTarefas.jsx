@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function ListaTarefas({ tarefas, setTarefas }) {
     const [novaTarefa, setNovaTarefa] = useState('');
+
+    useEffect(() => {
+        const tarefasSalvas = localStorage.getItem("tarefas")
+
+        if(tarefasSalvas) {
+            setTarefas(JSON.parse(tarefasSalvas))
+        }
+    }, [setTarefas])
 
     const adicionarTarefa = () => {
         if (novaTarefa.trim() !== '') {
@@ -9,15 +17,21 @@ function ListaTarefas({ tarefas, setTarefas }) {
                 id: tarefas.length + 1, // Simples ID sequencial
                 descricao: novaTarefa,
             };
-            // Atualiza o estado das tarefas
-            setTarefas([...tarefas, novaTarefaObj]);
+
+            const tarefasAtualizadas = [...tarefas, novaTarefaObj];
+
+            setTarefas(tarefasAtualizadas);
             setNovaTarefa(''); // Limpa o input após adicionar
+
+            localStorage.setItem('tarefas', JSON.stringify(tarefasAtualizadas));
         }
     };
 
     const removerTarefa = (id) => {
         const tarefasAtualizadas = tarefas.filter(tarefa => tarefa.id !== id);
         setTarefas(tarefasAtualizadas);
+
+        localStorage.setItem('tarefas', JSON.stringify(tarefasAtualizadas));
     };
 
     return (
@@ -30,11 +44,17 @@ function ListaTarefas({ tarefas, setTarefas }) {
             />
             <button onClick={adicionarTarefa}>Adicionar</button>
 
-            <ul>
+            <ul className="content-ul">
                 {tarefas.length > 0 ? (
                     tarefas.map(tarefa => (
-                        <li key={tarefa.id}>{tarefa.descricao}
-                        <button onClick={() => removerTarefa(tarefa.id)}>Remover</button>
+                        <li className="content-li"   key={tarefa.id}>
+                            
+                            <div className="content-descricao">
+                                {tarefa.descricao}
+                            </div>
+                            <div className="content-buttonDelete">
+                                <button onClick={() => removerTarefa(tarefa.id)}>Remover</button>
+                            </div>
                         </li>
                     ))
                 ) : (
